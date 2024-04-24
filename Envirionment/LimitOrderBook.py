@@ -1,5 +1,6 @@
 from itertools import islice
 import collections
+import numpy as np
 class LimitOrderBook:
     def __init__(self):
         self.buy_orders = dict()
@@ -44,7 +45,7 @@ class LimitOrderBook:
         rel_prices = prices[prices <= price]
         # relevant_prices = prices[:prices.index(price)]
         prices_to_remove = []
-        
+        order_shares = shares
         totalAmount = 0
         for i in range(0, len(rel_prices)):
             if shares == 0:
@@ -70,7 +71,7 @@ class LimitOrderBook:
         for price in prices_to_remove:
             del self.sell_orders[price]
             
-        return totalAmount # money that this buy costed
+        return totalAmount / (order_shares - shares), shares  # money that this buy costed
 
 
     def fill_sell_order(self, price, shares, agent_id):
@@ -78,7 +79,7 @@ class LimitOrderBook:
         rel_prices = prices[prices >= price]
         # relevant_prices = prices[:prices.index(price)]
         prices_to_remove = []
-        
+        order_shares = shares
         totalAmount = 0
         
         for i in range(0, len(rel_prices)):
@@ -107,7 +108,7 @@ class LimitOrderBook:
         for price in prices_to_remove:
             del self.buy_orders[price]
             
-        return totalAmount # money made in selling
+        return totalAmount / (order_shares - shares), shares # money made in selling
 
 
 
