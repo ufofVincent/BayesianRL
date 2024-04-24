@@ -13,12 +13,22 @@ class BayesianAgent:
         belief = rand.normalvariate(midpoint, self.variance)
         if belief > midpoint:
             k = (abs(belief - midpoint)) / self.variance
-            amount = k * self.holdingLimit
+
+            if k < 1:
+                amount = k * self.holdingLimit
+            else:
+                amount = self.holdingLimit
+            
             return 1, belief, amount
         elif belief == midpoint:
             return None
         else:
             k = (abs(belief - midpoint)) / self.variance
-            amount = k * self.holdingLimit
+
+            if k < 1:
+                amount = k * self.holdingLimit
+            else:
+                amount = self.holdingLimit
+                
             return 0, belief, amount
     
