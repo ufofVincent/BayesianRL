@@ -6,7 +6,7 @@ class RandomAgent:
     def __init__(self, agent_id, lam):
         self.agent_id = agent_id
         self.timer = 0
-        self.holdingLimit = 10000
+        self.holdingLimit = 1000
         self.lam = lam
     
     # buyPrices are prices at which buyers are willing to buy, which is used when selling

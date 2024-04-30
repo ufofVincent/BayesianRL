@@ -35,7 +35,7 @@ class LimitOrderBook:
         self.re_order_sells()
         
         if len(self.sell_orders) == 0 and len(self.buy_orders) == 0:
-            return None
+            return 0
         elif len(self.sell_orders) == 0 and not len(self.buy_orders) == 0:
             return list(self.buy_orders.keys())[0]
         elif not len(self.sell_orders) == 0 and len(self.buy_orders) == 0:
@@ -50,6 +50,12 @@ class LimitOrderBook:
         return take(5, self.sell_orders)
     
     def fill_buy_order(self, price, shares, agent_id):
+        
+        if price < 0:
+            return None, None
+        
+        
+        
         prices = np.array(sorted(list(self.sell_orders.keys())))
         rel_prices = prices[prices <= price]
         # relevant_prices = prices[:prices.index(price)]
@@ -87,10 +93,16 @@ class LimitOrderBook:
         else:
             weighted_average = 0
             
+        self.re_order_buys()
+            
         return weighted_average, shares  # money that this buy costed
 
 
     def fill_sell_order(self, price, shares, agent_id):
+        
+        if price < 0:
+            return None, None
+        
         prices = np.array(sorted(list(self.buy_orders.keys()), reverse=True))
         rel_prices = prices[prices >= price]
         # relevant_prices = prices[:prices.index(price)]
@@ -130,6 +142,8 @@ class LimitOrderBook:
             weighted_average = totalAmount / (order_shares - shares)
         else:
             weighted_average = 0
+            
+        self.re_order_buys()
         
         return weighted_average, shares # money made in selling
 

@@ -5,7 +5,7 @@ class BayesianAgent:
     
     def __init__(self, id, variance, lam):
         self.agent_id = id
-        self.holdingLimit = 1000
+        self.holdingLimit = 500
         self.variance = variance
         self.timer = 0
         self.lam = lam
