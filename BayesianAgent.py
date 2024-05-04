@@ -5,7 +5,7 @@ class BayesianAgent:
     
     def __init__(self, id, variance, lam):
         self.agent_id = id
-        self.holdingLimit = 500
+        self.holdingLimit = 10000
         self.variance = variance
         self.timer = 0
         self.lam = lam
@@ -17,7 +17,7 @@ class BayesianAgent:
                 k = (abs(belief - midpoint)) / self.variance
 
                 if k < 1:
-                    amount = int(k * self.holdingLimit)
+                    amount = int(k * self.holdingLimit) + 1000
                 else:
                     amount = self.holdingLimit
                 self.timer = random.poisson(self.lam, 1)[0]

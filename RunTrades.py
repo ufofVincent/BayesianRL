@@ -7,29 +7,31 @@ from itertools import islice
 
 import random
 import time
-from numpy import random
+import numpy as np
 
 class TradeWorld:
 
     def __init__(self, iterations):
         # self.randomAgents = []
         # self.bayesianAgents = []
-        random_a = RandomAgent(1, 5)
-        random_a_2 = RandomAgent(1, 5)
-        bayesian_a = BayesianAgent(2, 10, 5)
-        bayesian_a_2 = BayesianAgent(2, 10, 5)
-        self.bayesian_a_2 = BayesianAgent2(3, 100)
-        self.bayesian_a_2_2 = BayesianAgent2(3, 100)
+        # random_a = RandomAgent(1, 20)
+        # random_a_2 = RandomAgent(1, 20)
+        # bayesian_a = BayesianAgent(2, 10, 20)
+        # bayesian_a_2 = BayesianAgent(2, 10, 20)
+        # self.bayesian_a_2 = BayesianAgent2(3, 100)
+        # self.bayesian_a_2_2 = BayesianAgent2(3, 100)
 
         # self.totalAgents = 50
         # self.trips = 5
         self.iterations = iterations
         self.fixed_cost = 0
         self.floating_cost = 0
-        self.market_shock_timer = random.poisson(10000, 1)[0]
+        self.market_shock_timer = np.random.poisson(100000, 1)[0]
         self.crash_or_bubble = False
         self.current_belief = 0
         self.cob_duration = 0
+        
+        oberservations = [random.randint(50, 200) for i in range(iterations)]
         
         self.lob = LimitOrderBook() # need to write a function to read in a limit order book from stock data
 
@@ -41,14 +43,14 @@ class TradeWorld:
         
         self.agents = []
         
-        for i in range(0, 3):
-            self.agents.append(BayesianAgent(2, 10, 5))
+        # for i in range(0, 20):
+        #     self.agents.append(BayesianAgent(2, 10, 50))
         
-        for i in range(0, 3):
-            self.agents.append(RandomAgent(1, 5))
+        # for i in range(0, 20):
+        #     self.agents.append(RandomAgent(1, 50))
             
-        for i in range(0,3):
-            self.agents.append(BayesianAgent2(3, 100))
+        for i in range(0,20):
+            self.agents.append(BayesianAgent2(3, 100, oberservations, random.randint(0, 10) ))
         
         self.beliefs = []
         self.midpoints = []
@@ -76,7 +78,7 @@ class TradeWorld:
                 if self.cob_duration == 0:
                     self.crash_or_bubble = False
                     self.current_belief = 0
-                    self.market_shock_timer = random.poisson(10000, 1)[0]
+                    self.market_shock_timer = np.random.poisson(100000, 1)[0]
             
                 if type(agent) == RandomAgent:
                     
@@ -98,7 +100,7 @@ class TradeWorld:
                             belief = self.lob.mid_point()
                     elif self.crash_or_bumble == False and self.market_shock_timer == 0:
                         belief = abs(self.lob.mid_point() + ((self.lob.mid_point() * random.randint(0.10, 0.20)) * random.choice([-1, 1])))
-                        self.cob_duration = random.poisson(250, 1)[0]
+                        self.cob_duration = np.random.poisson(250, 1)[0]
                         self.current_belief = belief
                         self.crash_or_bubble == True
                     else:
@@ -109,7 +111,7 @@ class TradeWorld:
                     else:
                         decision, price, shares = agent.take_action(belief)
                 else:
-                    decision, price, shares = agent.take_action(self.lob.mid_point())
+                    decision, price, shares = agent.take_action(self.lob.mid_point(), i)
                 
                 if decision == 0:
                     #print(belief)
@@ -130,13 +132,13 @@ class TradeWorld:
             # else:
             #     print("This Bayesian agent made ", (currAgent.cash - cashBeforeTrades))
             
-            if belief != None:
+            # if belief != None:
                 
-                self.beliefs.append(abs(belief))
-            else:
-                print("None!")
-                self.beliefs.append(0)
-            # print(i)
+            #     self.beliefs.append(abs(belief))
+            # else:
+            #     print("None!")
+            #     self.beliefs.append(0)
+            print(i)
             
 world = TradeWorld(10000)
 world.run_simulation()

@@ -3,16 +3,21 @@ import random
 
 class BayesianAgent2:
     
-    def __init__(self, agent_id, initial_belief, learning_rate = 0.7, tradingLimit = 1000):
+    def __init__(self, agent_id, initial_belief, observations, variance, learning_rate = 0.7, tradingLimit = 1000):
         self.learning_rate = learning_rate
         self.agent_id = agent_id
         self.initial_belief = initial_belief
         self.belief = initial_belief
         self.tradingLimit = tradingLimit
         
+        self.curr_iteration = 0
+        # self.oberservations = [random.randint(initial_belief, initial_belief * 2)]
+        self.obsevations = observations
+        self.variance = variance
+        
         self.midpoints = []
         
-    def take_action(self, midpoint):
+    def take_action(self, midpoint,i):
                 
         action = None
         amount = None
@@ -28,7 +33,6 @@ class BayesianAgent2:
                 amount = self.tradingLimit
             else:
                 amount = self.tradingLimit * (percetange / 0.2)
-                
             
         else:
             
@@ -40,7 +44,7 @@ class BayesianAgent2:
             else:
                 amount = self.tradingLimit * (percetange / 0.2)
                 
-        self.belief = self.learning_rate * self.belief + (1-self.learning_rate) * midpoint
+        self.belief = self.learning_rate * self.belief + (1-self.learning_rate) * np.random.normal(self.obsevations[i], self.variance)
         
         print(self.belief)
         
