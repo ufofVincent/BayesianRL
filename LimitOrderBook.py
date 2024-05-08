@@ -1,10 +1,31 @@
 from itertools import islice
 import collections
 import numpy as np
+import pandas as pd
+
 class LimitOrderBook:
     def __init__(self):
         self.buy_orders = dict()
         self.sell_orders = dict()
+        
+    def read_lob_csv_file(self, lob_file, row):
+        
+        file = pd.read_csv(lob_file)
+        
+        bid_or_ask = False # ask is False, bid is True
+        agent_count = 1
+        
+        for column in range(0, file.shape[1] // 2):
+            if not bid_or_ask:
+                self.add_sell(file.iloc[row][column * 2], file.iloc[row][column * 2 + 1], agent_count)
+                bid_or_ask = True
+                agent_count += 1
+            else:
+                self.add_buy(file.iloc[row][column * 2], file.iloc[row][column * 2 + 1], agent_count)
+                bid_or_ask = False
+                agent_count += 1
+                
+                
         
     def add_buy(self, price, amount, agent_id):
         if price not in list(self.buy_orders.keys()):
@@ -148,14 +169,11 @@ class LimitOrderBook:
         return weighted_average, shares # money made in selling
 
 
+lob = LimitOrderBook()
+lob.read_lob_csv_file("AAPL_2024-03-01_34200000_57600000_orderbook_10.csv", 0)
 
-
-
-
-
-
-
-
+print(list(lob.buy_orders))
+print(list(lob.sell_orders))
 
 
 
