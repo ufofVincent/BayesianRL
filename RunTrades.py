@@ -12,6 +12,10 @@ import numpy as np
 class TradeWorld:
     def __init__(self, iterations):
         self.iterations = iterations
+        self.bayesian_agent_training = np.array([])
+        self.nn_agent_training = np.array([])
+        self.bayesian_agent_testing = np.array([])
+        self.nn_agent_testing = np.array([])
         self.fixed_cost = 0
         self.floating_cost = 0
         # self.market_shock_timer = np.random.poisson(100000, 1)[0]
@@ -24,14 +28,18 @@ class TradeWorld:
             self.agents.append(RandomAgent(0, 1))
         for i in range(0,1000):
             self.agents.append(BayesianAgent2(1, 100, oberservations, random.randint(0, 10), 1,  learning_rate=np.random.uniform(0.75, 0.9)))
-        
-        self.agents.append(DeepQ(2, 2, 3,10, 0.001, 1, 0.99, 0.9, bayesian=True))
-        self.agents.append(DeepQ(3, 2, 3,10, 0.001, 1, 0.99, 0.9, bayesian=False))
+        self.agents.append(DeepQ(2, 2, 3, 10, 0.0025, 1, 0.9999, 0.9, bayesian=True))
+        self.agents.append(DeepQ(2, 2, 3, 10, 0.0025, 1, 0.9999, 0.9, bayesian=False))
+        # self.agents.append(DeepQ(2, 2, 3, 10, 0.0025, 1, 0.99, 0.9, bayesian=True))
+        # self.agents.append(DeepQ(2, 2, 3, 10, 0.0025, 1, 0.99, 0.9, bayesian=False))
         self.agents.append(MarketMakerAgent(1, 1))
         self.beliefs = []
         self.midpoints = []
+        self.train = True
     def run_simulation(self):
         for i in range(self.iterations):
+            if i == self.iterations / 2:
+                self.train = False
             # agent_list = random.shuffle(self.agents)
             random.shuffle(self.agents)
             # print("LOB Buy Orders: " + str(len(self.lob.buy_orders)))
@@ -55,6 +63,8 @@ class TradeWorld:
                         self.lob = output
                 else:
                     try:
+                        if i == self.iterations / 2:
+                            agent.rewards = 0
                         l1_buy_price = take(1, list(self.lob.buy_orders.keys()))[0]
                         l1_sell_price = take(1, list(self.lob.sell_orders.keys()))[0]
                         l1_buy_volume = sum(tuple[0] for tuple in self.lob.buy_orders[l1_buy_price])
@@ -67,14 +77,45 @@ class TradeWorld:
                         agent.rewards += reward
                         # print(agent.rewards)
                         # agent.holdings = midpoint * agent.shares
-                        agent.update_experiences(reward, bid_ask)
-                        if i % 10000 == 0:
+                        if self.train:
+                            agent.update_experiences(reward, bid_ask)
+                        if i % 1000 == 0 and self.train == True:
                             agent.train()
-                            print("training")
-                            print(agent.rewards)
-                        action = agent.take_action(np.array([bid_ask, agent.shares]), random = True)
+                            # print("training")
+                            # print(agent.rewards)
+                        sig = 0
+                        if self.train:
+                            action = agent.take_action(np.array([bid_ask, agent.shares]), random = True)
+                        else:
+                            if agent.bayesian:
+                                action, sig = agent.take_action(np.array([bid_ask, agent.shares]), random = False)
+                            else:
+                                action = agent.take_action(np.array([bid_ask, agent.shares]), random = False)
                         agent.previous_action = decision
-                        if action == 0: #take short position
+                        if agent.bayesian:
+                            if self.train:
+                                # self.bayesian_agent_training[i % int(self.iterations / 2)] = agent.rewards
+                                self.bayesian_agent_training = np.append(self.bayesian_agent_training, agent.rewards)
+                            else:
+                                self.bayesian_agent_testing = np.append(self.bayesian_agent_testing, agent.rewards)
+                        else:
+                            if self.train:
+                                # self.nn_agent_training[i % int(self.iterations / 2)] = agent.rewards
+                                self.nn_agent_training = np.append(self.nn_agent_training, agent.rewards)
+                            else:
+                                self.nn_agent_testing = np.append(self.nn_agent_testing, agent.rewards)
+                        if action == 1: #take neutral position
+                            if agent.shares == 0: #do nothing
+                                agent.holdings = midpoint * agent.shares
+                            elif agent.shares == agent.trade_limit: #bail on long position
+                                agent.cash = agent.cash + (agent.trade_limit * midpoint)
+                                agent.holdings = 0
+                                agent.shares = 0
+                            else: #bail on short position
+                                agent.cash = agent.cash - (agent.trade_limit * midpoint)
+                                agent.holdings = 0
+                                agent.shares = 0
+                        elif action == 0: #take short position
                             if agent.shares == -agent.trade_limit: #do nothing
                                 agent.holdings = midpoint * agent.shares
                             elif agent.shares == 0: #take short position from neutral
@@ -86,17 +127,6 @@ class TradeWorld:
                                 agent.cash = agent.cash + (agent.trade_limit * 2 * midpoint)
                                 agent.holdings = -agent.trade_limit * midpoint
                                 agent.shares = -agent.trade_limit
-                        elif action == 1: #take neutral position
-                            if agent.shares == 0: #do nothing
-                                agent.holdings = midpoint * agent.shares
-                            elif agent.shares == agent.trade_limit: #bail on long position
-                                agent.cash = agent.cash + (agent.trade_limit * midpoint)
-                                agent.holdings = 0
-                                agent.shares = 0
-                            else: #bail on short position
-                                agent.cash = agent.cash - (agent.trade_limit * midpoint)
-                                agent.holdings = 0
-                                agent.shares = 0
                         else: #take long position
                             if agent.shares == -agent.trade_limit:
                                 agent.cash = agent.cash - (agent.trade_limit * 2 * midpoint)
@@ -120,9 +150,32 @@ class TradeWorld:
                     continue
             # self.midpoints.append(self.lob.mid_point())
             print("Iteration " + str(i) + " finished")
-world = TradeWorld(1000000)
+world = TradeWorld(100000)
 world.run_simulation()
 # iteration = [i for i in range(0, len(world.midpoints) - 20)]
 # beliefs = world.beliefs
 # plt.plot(iteration, world.midpoints[20:])
-plt.show()
+plt.plot(np.array([i for i in range(0, len(world.bayesian_agent_training))]), world.bayesian_agent_training)
+plt.title("Bayesian Agent Training")
+plt.xlabel("Iteration")
+plt.ylabel("Rewards")
+plt.savefig("Bayesian_Agent_Training11")
+plt.close()
+plt.plot(np.array([i for i in range(0, len(world.nn_agent_training))]), world.nn_agent_training)
+plt.title("Non-Bayesian Agent Training")
+plt.xlabel("Iteration")
+plt.ylabel("Rewards")
+plt.savefig("Non-Bayesian_Agent_Training11")
+plt.close()
+plt.plot(np.array([i for i in range(0, len(world.bayesian_agent_testing))]), world.bayesian_agent_testing)
+plt.title("Bayesian Agent Testing")
+plt.xlabel("Iteration")
+plt.ylabel("Rewards")
+plt.savefig("Bayesian_Agent_Testing11")
+plt.close()
+plt.plot(np.array([i for i in range(0, len(world.nn_agent_testing))]), world.nn_agent_testing)
+plt.title("Non-Bayesian Agent Testing")
+plt.xlabel("Iteration")
+plt.ylabel("Rewards")
+plt.savefig("Non-Bayesian_Agent_Testing11")
+plt.close()
