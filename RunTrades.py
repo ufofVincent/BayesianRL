@@ -85,59 +85,190 @@ class TradeWorld:
                             # print(agent.rewards)
                         sig = 0
                         if self.train:
-                            action = agent.take_action(np.array([bid_ask, agent.shares]), random = True)
+                            if agent.bayesian:
+                                action, sig = agent.take_action(np.array([bid_ask, agent.shares]), random = True)
+                            else:
+                                action = agent.take_action(np.array([bid_ask, agent.shares]), random = True)
                         else:
                             if agent.bayesian:
                                 action, sig = agent.take_action(np.array([bid_ask, agent.shares]), random = False)
                             else:
                                 action = agent.take_action(np.array([bid_ask, agent.shares]), random = False)
                         agent.previous_action = decision
-                        if agent.bayesian:
-                            if self.train:
-                                # self.bayesian_agent_training[i % int(self.iterations / 2)] = agent.rewards
-                                self.bayesian_agent_training = np.append(self.bayesian_agent_training, agent.rewards)
-                            else:
-                                self.bayesian_agent_testing = np.append(self.bayesian_agent_testing, agent.rewards)
-                        else:
-                            if self.train:
-                                # self.nn_agent_training[i % int(self.iterations / 2)] = agent.rewards
-                                self.nn_agent_training = np.append(self.nn_agent_training, agent.rewards)
-                            else:
-                                self.nn_agent_testing = np.append(self.nn_agent_testing, agent.rewards)
-                        if action == 1: #take neutral position
-                            if agent.shares == 0: #do nothing
+                        share_penalty = 1.0
+                        if sig != None:
+                            if sig >= 75:
+                                share_penalty = 0.5
+                        if action == 0: #take short position
+                            if agent.shares == -agent.trade_limit and share_penalty == 1.0: #do nothing
                                 agent.holdings = midpoint * agent.shares
-                            elif agent.shares == agent.trade_limit: #bail on long position
-                                agent.cash = agent.cash + (agent.trade_limit * midpoint)
-                                agent.holdings = 0
-                                agent.shares = 0
-                            else: #bail on short position
-                                agent.cash = agent.cash - (agent.trade_limit * midpoint)
-                                agent.holdings = 0
-                                agent.shares = 0
-                        elif action == 0: #take short position
-                            if agent.shares == -agent.trade_limit: #do nothing
+                            elif agent.shares == -agent.trade_limit and share_penalty == 0.5: #sell some short position
+                                agent.cash = agent.cash - (agent.trade_limit * 0.5)
+                                agent.holdings = midpoint * agent.shares * share_penalty
+                                agent.shares = agent.shares * share_penalty
+                            elif agent.shares == -agent.trade_limit * 0.5 and share_penalty == 0.5: #do nothing
                                 agent.holdings = midpoint * agent.shares
-                            elif agent.shares == 0: #take short position from neutral
+                            elif agent.shares == -agent.trade_limit * 0.5 and share_penalty == 1.0:
+                                agent.shares = -agent.trade_limit
+                                agent.cash = agent.cash + (agent.trade_limit* 0.5 * midpoint)
+                                agent.holdings = -agent.trade_limit * midpoint
+                            elif agent.shares == 0 and share_penalty == 1.0: #take short position from neutral
                                 agent.shares = -agent.trade_limit
                                 agent.cash = agent.cash + (agent.trade_limit * midpoint)
                                 agent.holdings = -agent.trade_limit * midpoint
-                            else: #take short position from long
+                            elif agent.shares == 0 and share_penalty == 0.5:
+                                agent.shares = -agent.trade_limit * 0.5
+                                agent.cash = agent.cash + (agent.trade_limit* 0.5 * midpoint)
+                                agent.holdings = -agent.trade_limit * 0.5 * midpoint
+                            elif agent.shares == agent.trade_limit and share_penalty == 1.0: #take short position from long
             #                    if we currently have self.shares shares, we need to trade -2000 to get a short position of -self.shares
                                 agent.cash = agent.cash + (agent.trade_limit * 2 * midpoint)
                                 agent.holdings = -agent.trade_limit * midpoint
                                 agent.shares = -agent.trade_limit
+                            elif agent.shares == agent.trade_limit and share_penalty == 0.5:
+                                agent.cash = agent.cash + (agent.trade_limit * 1.5 * midpoint)
+                                agent.holdings = -agent.trade_limit * 0.5 * midpoint
+                                agent.shares = -agent.trade_limit * 0.5
+                            elif agent.shares == agent.trade_limit * 0.5 and share_penalty == 1.0: #take short position from long
+            #                    if we currently have self.shares shares, we need to trade -2000 to get a short position of -self.shares
+                                agent.cash = agent.cash + (agent.trade_limit * 1.5 * midpoint)
+                                agent.holdings = -agent.trade_limit * midpoint
+                                agent.shares = -agent.trade_limit
+                            else:
+                                agent.cash = agent.cash + (agent.trade_limit * 1 * midpoint)
+                                agent.holdings = -agent.trade_limit * 0.5 * midpoint
+                                agent.shares = -agent.trade_limit * 0.5
+                        elif action == 1: #take neutral position
+                            if agent.shares == 0: #do nothing
+                                agent.holdings = midpoint * agent.shares
+                            elif agent.shares == agent.trade_limit and share_penalty == 1.0: #bail on long position
+                                agent.cash = agent.cash + (agent.trade_limit * midpoint)
+                                agent.holdings = 0
+                                agent.shares = 0
+                            elif agent.shares == agent.trade_limit and share_penalty == 0.5: #bail on long position
+                                agent.cash = agent.cash + (agent.trade_limit * 0.5 * midpoint)
+                                agent.holdings = agent.shares * 0.5 * midpoint
+                                agent.shares = agent.shares * 0.5
+                            elif agent.shares == agent.trade_limit * 0.5 and share_penalty == 1.0: #bail on long position
+                                agent.cash = agent.cash + (agent.trade_limit * 0.5 * midpoint)
+                                agent.holdings = 0
+                                agent.shares = 0
+                            elif agent.shares == agent.trade_limit * 0.5  and share_penalty == 0.5: #bail on long position
+                                agent.cash = agent.cash + (agent.trade_limit * 0.5 * midpoint)
+                                agent.holdings = 0
+                                agent.shares = 0
+                            elif agent.shares == -agent.trade_limit and share_penalty == 1.0: #bail on short position
+                                agent.cash = agent.cash - (agent.trade_limit * midpoint)
+                                agent.holdings = 0
+                                agent.shares = 0
+                            elif agent.shares == -agent.trade_limit and share_penalty == 0.5: #bail on short position
+                                agent.cash = agent.cash - (agent.trade_limit * 0.5 * midpoint)
+                                agent.holdings = -agent.trade_limit * 0.5 * midpoint
+                                agent.shares = -agent.trade_limit * 0.5
+                            elif agent.shares == -agent.trade_limit * 0.5 and share_penalty == 1.0:
+                                agent.cash = agent.cash - (agent.trade_limit * 0.5 * midpoint)
+                                agent.holdings = 0
+                                agent.shares = 0
+                            else:
+                                agent.cash = agent.cash - (agent.trade_limit * 0.5 * midpoint)
+                                agent.holdings = 0
+                                agent.shares = 0
                         else: #take long position
-                            if agent.shares == -agent.trade_limit:
+                            if agent.shares == -agent.trade_limit and share_penalty == 1.0:
                                 agent.cash = agent.cash - (agent.trade_limit * 2 * midpoint)
                                 agent.holdings = agent.trade_limit * midpoint
                                 agent.shares = agent.trade_limit
-                            elif agent.shares == 0:
+                            elif agent.shares == -agent.trade_limit and share_penalty == 0.5:
+                                agent.cash = agent.cash - (agent.trade_limit * 1.5 * midpoint)
+                                agent.holdings = agent.trade_limit *0.5 * midpoint
+                                agent.shares = agent.trade_limit * 0.5
+                            elif agent.shares == -agent.trade_limit * 0.5 and share_penalty == 1.0:
+                                agent.cash = agent.cash - (agent.trade_limit * 0.5 * midpoint)
+                                agent.holdings = agent.trade_limit *0.5 * midpoint
+                                agent.shares = agent.trade_limit * 0.5
+                            elif agent.shares == -agent.trade_limit * 0.5 and share_penalty == 0.5:
+                                agent.cash = agent.cash - (agent.trade_limit * 1.0 * midpoint)
+                                agent.holdings = agent.trade_limit *0.5 * midpoint
+                                agent.shares = agent.trade_limit * 0.5
+                            elif agent.shares == 0 and share_penalty == 1.0:
                                 agent.cash = agent.cash - (agent.trade_limit * midpoint)
                                 agent.holdings = agent.trade_limit * midpoint
                                 agent.shares = agent.trade_limit
+                            elif agent.shares == 0 and share_penalty == 0.5:
+                                agent.cash = agent.cash - (agent.trade_limit * 0.5 * midpoint)
+                                agent.holdings = agent.trade_limit * midpoint * 0.5
+                                agent.shares = agent.trade_limit * 0.5
+                            elif agent.shares == agent.trade_limit and agent == 1.0:
+                                agent.holdings = midpoint * agent.shares
+                            elif agent.shares == agent.trade_limit and agent == 0.5:
+                                agent.cash = agent.cash + (agent.trade_limit * 0.5 * midpoint)
+                                agent.holdings = agent.trade_limit * midpoint * 0.5
+                                agent.shares = agent.trade_limit * 0.5
+                            elif agent.shares == agent.trade_limit * 0.5 and agent == 1.0:
+                                agent.holdings = midpoint * agent.shares
+                                agent.cash = agent.cash - (agent.trade_limit * 0.5 * midpoint)
+                                agent.shares = agent.trade_limit * 0.5
                             else:
                                 agent.holdings = midpoint * agent.shares
+            #             if agent.bayesian:
+            #                 if self.train:
+            #                     # self.bayesian_agent_training[i % int(self.iterations / 2)] = agent.rewards
+            #                     self.bayesian_agent_training = np.append(self.bayesian_agent_training, agent.rewards)
+            #                 else:
+            #                     self.bayesian_agent_testing = np.append(self.bayesian_agent_testing, agent.rewards)
+            #             else:
+            #                 if self.train:
+            #                     # self.nn_agent_training[i % int(self.iterations / 2)] = agent.rewards
+            #                     self.nn_agent_training = np.append(self.nn_agent_training, agent.rewards)
+            #                 else:
+            #                     self.nn_agent_testing = np.append(self.nn_agent_testing, agent.rewards)
+            #             agent.previous_action = decision
+            #             if agent.bayesian:
+            #                 if self.train:
+            #                     # self.bayesian_agent_training[i % int(self.iterations / 2)] = agent.rewards
+            #                     self.bayesian_agent_training = np.append(self.bayesian_agent_training, agent.rewards)
+            #                 else:
+            #                     self.bayesian_agent_testing = np.append(self.bayesian_agent_testing, agent.rewards)
+            #             else:
+            #                 if self.train:
+            #                     # self.nn_agent_training[i % int(self.iterations / 2)] = agent.rewards
+            #                     self.nn_agent_training = np.append(self.nn_agent_training, agent.rewards)
+            #                 else:
+            #                     self.nn_agent_testing = np.append(self.nn_agent_testing, agent.rewards)
+            #             if action == 1: #take neutral position
+            #                 if agent.shares == 0: #do nothing
+            #                     agent.holdings = midpoint * agent.shares
+            #                 elif agent.shares == agent.trade_limit: #bail on long position
+            #                     agent.cash = agent.cash + (agent.trade_limit * midpoint)
+            #                     agent.holdings = 0
+            #                     agent.shares = 0
+            #                 else: #bail on short position
+            #                     agent.cash = agent.cash - (agent.trade_limit * midpoint)
+            #                     agent.holdings = 0
+            #                     agent.shares = 0
+            #             elif action == 0: #take short position
+            #                 if agent.shares == -agent.trade_limit: #do nothing
+            #                     agent.holdings = midpoint * agent.shares
+            #                 elif agent.shares == 0: #take short position from neutral
+            #                     agent.shares = -agent.trade_limit
+            #                     agent.cash = agent.cash + (agent.trade_limit * midpoint)
+            #                     agent.holdings = -agent.trade_limit * midpoint
+            #                 else: #take short position from long
+            # #                    if we currently have self.shares shares, we need to trade -2000 to get a short position of -self.shares
+            #                     agent.cash = agent.cash + (agent.trade_limit * 2 * midpoint)
+            #                     agent.holdings = -agent.trade_limit * midpoint
+            #                     agent.shares = -agent.trade_limit
+            #             else: #take long position
+            #                 if agent.shares == -agent.trade_limit:
+            #                     agent.cash = agent.cash - (agent.trade_limit * 2 * midpoint)
+            #                     agent.holdings = agent.trade_limit * midpoint
+            #                     agent.shares = agent.trade_limit
+            #                 elif agent.shares == 0:
+            #                     agent.cash = agent.cash - (agent.trade_limit * midpoint)
+            #                     agent.holdings = agent.trade_limit * midpoint
+            #                     agent.shares = agent.trade_limit
+            #                 else:
+            #                     agent.holdings = midpoint * agent.shares
                     except:
                         continue
                 if decision == 0:

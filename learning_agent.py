@@ -115,14 +115,17 @@ class DeepQ:
                         mu = mu / 100
                         for sample in samples:
                             sigma += (((mu - sample) ** 2) / 99)
-                        if torch.sum(torch.sqrt(sigma)) >= 73.0:
-                            return rand.randint(0,2)
-                        return mu.argmax()
+                        if torch.sum(torch.sqrt(sigma)) >= 80.0:
+                            return rand.randint(0,2), 80
+                        return mu.argmax(), torch.sum(torch.sqrt(sigma))
                     else:
                         return self.network(torch.tensor(x).type(torch.float32)).argmax()
             else:
                 self.epsilon *= self.decay
-                return rand.randint(0,2)
+                if self.bayesian:
+                    return rand.randint(0,2), 80
+                else:
+                    return rand.randint(0,2)
         else:
             if self.bayesian:
                 samples = []
@@ -141,8 +144,6 @@ class DeepQ:
                 return mu.argmax(), torch.sum(torch.sqrt(sigma))
             else:
                 return self.network(torch.tensor(x).type(torch.float32)).argmax()
-
-
 
 
 
